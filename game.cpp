@@ -1,5 +1,6 @@
 #include <iostream>
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 
 using namespace std;
 using namespace sf;
@@ -9,8 +10,9 @@ int height = 768;
 int roadW = 2000;
 int segL = 200;    //segment length
 float camD = 0.84; //camera depth
+FloatRect sprite_bounds;
 
-// for darawing road
+// for darawing quadilateral for road
 void drawQuad(RenderWindow &w, Color c, int x1, int y1, int w1, int x2, int y2, int w2)
 {
     ConvexShape shape(4);
@@ -22,12 +24,33 @@ void drawQuad(RenderWindow &w, Color c, int x1, int y1, int w1, int x2, int y2, 
     w.draw(shape);
 }
 
+void drawGameOverState(RenderWindow &w)
+{
+    Font f;
+    Text game_over;
+    FloatRect gameRect = game_over.getLocalBounds();
+
+    f.loadFromFile("Fonts/raider.ttf");
+    game_over.setFont(f);
+    game_over.setOrigin(gameRect.left + gameRect.width / 2.0f, gameRect.top + gameRect.height / 2.0f);
+    game_over.setPosition(width / 2 - 400, height / 2 - 200);
+    game_over.setFillColor(Color(155, 34, 48));
+    game_over.setString("GAME OVER\n");
+    game_over.setCharacterSize(100);
+    w.draw(game_over);
+}
+
 struct Line
 {
     float x, y, z;              //3d center of line
     float X, Y, W;              //screen coord
     float spriteX, clip, scale; // curve,
-    Sprite sprite;
+    Sprite sprite, opCar;
+
+    FloatRect getSpriteBounds()
+    {
+        return sprite_bounds;
+    }
 
     Line()
     {
@@ -66,6 +89,36 @@ struct Line
         s.setTextureRect(IntRect(0, 0, w, h - h * clipH / destH));
         s.setScale(destW / w, destH / h);
         s.setPosition(destX, destY);
+
+        window.draw(s);
+    }
+
+    void CarSprite(RenderWindow &window)
+    {
+        Sprite s = opCar;
+        int w = s.getTextureRect().width;
+        int h = s.getTextureRect().height;
+
+        float destX = X + scale * spriteX * width / 2;
+        float destY = Y + 4;
+        float destW = w * W / 266;
+        float destH = h * W / 266;
+
+        destX += destW * spriteX; //offsetX
+        destY += destH * (-1);    //offsetY
+
+        float clipH = destY + destH - clip;
+        if (clipH < 0)
+            clipH = 0;
+
+        if (clipH >= destH)
+            return;
+        s.setTextureRect(IntRect(0, 0, w, h - h * clipH / destH));
+        s.setScale(destW / w, destH / h);
+        s.setPosition(destX, destY);
+
+        sprite_bounds = s.getGlobalBounds();
+
         window.draw(s);
     }
 };
@@ -74,6 +127,18 @@ int main()
 {
     RenderWindow window(VideoMode(width, height), "Car Race");
     window.setFramerateLimit(60);
+
+    SoundBuffer buffer;
+    if (!buffer.loadFromFile("sound.wav"))
+        return -1; // error
+
+    Sound sound;
+    sound.setBuffer(buffer);
+    sound.setLoop(true);
+
+    Music music;
+    if (!music.openFromFile("game_over.wav"))
+        return -1;
 
     // drawing object in the side of road
     Texture t[50];
@@ -92,7 +157,6 @@ int main()
     Sprite sBackground(bg);
     sBackground.setTextureRect(IntRect(0, 0, 5000, 411));
     sBackground.setPosition(-2000, 0);
-    // sBackground.setPosition(0, 0);
 
     Texture texture;
     texture.loadFromFile("images/car.png");
@@ -108,11 +172,6 @@ int main()
     {
         Line line;
         line.z = i * segL;
-
-        // if (i > 300 && i < 700)
-        //     line.curve = 0.5;
-        // if (i > 1100)
-        //     line.curve = -0.7;
 
         if (i < 300 && i % 20 == 0)
         {
@@ -154,27 +213,15 @@ int main()
         {
             line.spriteX = 0;
             line.sprite.setTextureRect(IntRect(0, 0, 100, 50));
-            line.sprite = object[8];
-            // collision detection
-            if (line.sprite.getGlobalBounds().intersects(Rectcar.getGlobalBounds()))
-            {
-                cout << "Collision" << endl;
-            }
+            line.opCar = object[8];
         }
 
         if (i % 329 == 0)
         {
             line.spriteX = -1.1;
             line.sprite.setTextureRect(IntRect(0, 0, 100, 50));
-            line.sprite = object[8];
-
-            // collision detection
-            if (line.sprite.getGlobalBounds().intersects(Rectcar.getGlobalBounds()))
-            {
-                cout << "Collision" << endl;
-            }
+            line.opCar = object[8];
         }
-        //     line.y = sin(i / 30.0) * 1500;
 
         lines.push_back(line);
     }
@@ -191,24 +238,24 @@ int main()
         {
             if (e.type == Event::Closed)
                 window.close();
+            // if (Event::EventType::KeyPressed)
+            //     if (e.key.code == Keyboard::Up)
+            //         sound.play();
         }
 
         int speed = 0;
 
         if (Keyboard::isKeyPressed(Keyboard::Right))
-            playerX += 0.05;
+            playerX += 0.04;
         if (Keyboard::isKeyPressed(Keyboard::Left))
-            playerX -= 0.05;
+            playerX -= 0.04;
         if (Keyboard::isKeyPressed(Keyboard::Up))
+        {
             speed = 100;
-        // if (Keyboard::isKeyPressed(Keyboard::Down))
-        // speed = -200;
-        // if (Keyboard::isKeyPressed(Keyboard::Tab))
-        // speed *= 3;
-        // if (Keyboard::isKeyPressed(Keyboard::W))
-        // H += 100;
-        // if (Keyboard::isKeyPressed(Keyboard::S))
-        // H -= 100;
+            sound.play();
+        }
+        if (Event::EventType::KeyReleased && e.key.code == Keyboard::Up)
+            sound.pause();
 
         pos += speed;
         while (pos >= N * segL)
@@ -220,10 +267,6 @@ int main()
         window.draw(sBackground);
         int startPos = pos / segL;
         int camH = lines[startPos].y + H;
-        // if (speed > 0)
-        //     sBackground.move(-lines[startPos].curve * 2, 0);
-        // if (speed < 0)
-        //     sBackground.move(lines[startPos].curve * 2, 0);
 
         int maxy = height;
         float x = 0, dx = 0;
@@ -234,7 +277,6 @@ int main()
             Line &l = lines[n % N];
             l.project(playerX * roadW - x, camH, startPos * segL - (n >= N ? N * segL : 0));
             x += dx;
-            // dx += l.curve;
 
             l.clip = maxy;
             if (l.Y >= maxy)
@@ -260,15 +302,47 @@ int main()
             lines[n % N].drawSprite(window);
         }
 
+        for (int n = startPos + 300; n > startPos; n--)
+        {
+            lines[n % N].CarSprite(window);
+        }
+
         window.draw(Rectcar);
 
-        
+        // for  collision with opponent car
+        if (lines[startPos].getSpriteBounds().intersects(Rectcar.getGlobalBounds()))
+        {
+            sound.~Sound();
+            window.clear();
+            Texture over;
+            over.loadFromFile("images/over.png");
 
-        // for sprite collision
-        // if(Rectcar.getGlobalBounds().intersects(lines[].sprite.getGlobalBounds()))
-        // {
-        //     cout << "collision" << endl;
-        // }
+            RectangleShape overgame(Vector2f(width, height));
+            overgame.setTexture(&over);
+
+            Font f, d;
+            Text game_over;
+            Text doneBY;
+            f.loadFromFile("Fonts/raider.ttf");
+            game_over.setFont(f);
+            game_over.setPosition(width / 2 - 250, height / 2 - 210);
+            game_over.setFillColor(Color(155, 34, 48));
+            game_over.setString("GAME OVER\n");
+            game_over.setCharacterSize(100);
+
+            d.loadFromFile("Fonts/OpenSans.ttf");
+            doneBY.setFont(d);
+            doneBY.setString("Project by: Subash Kc");
+            doneBY.setCharacterSize(80);
+            doneBY.setPosition(50, height / 2 + 200);
+            doneBY.setFillColor(Color(255, 255, 255));
+
+            sound.stop();
+            music.play();
+            window.draw(overgame);
+            window.draw(game_over);
+            window.draw(doneBY);
+        }
 
         window.display();
     }
@@ -276,12 +350,4 @@ int main()
     return 0;
 }
 
-// Texture texture;
-// texture.loadFromFile("bb.png");
-
-// RectangleShape Rectcar(Vector2f(200, 150));
-// Rectcar.setPosition(320, 470);
-// Rectcar.setRotation(1);
-// Rectcar.setTexture(&texture);
-
-//window.draw(Rectcar);
+// g++ game.cpp -o game -lsfml-graphics -lsfml-window -lsfml-system -lsfml-audio
