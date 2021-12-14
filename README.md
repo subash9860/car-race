@@ -22,7 +22,7 @@ g++ game.cpp -o game -lsfml-graphics -lsfml-window -lsfml-system -lsfml-audio
 [Clike here](https://www.sfml-dev.org/learn.php) for more documentation.
 
 ## some Snapshot
-<img height="480px" src="images/image1.png"> <img height="480px" src="assets/readme/2.png"> <img height="480px" src="images/image2.png">
+<img height="480px" src="images/image1.png">  <img height="480px" src="images/image2.png">
  
 
 ### Thank You for visiting.
