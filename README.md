@@ -1,5 +1,5 @@
 # Car Race
-Car race is simple game which has been built by using [SFML](https://www.sfml-dev.org/) in c++ implementing concepts of Computer Graphics for project Work of Bsc.CSIT, TU.
+Car race is simple game which has been built by using [SFML](https://www.sfml-dev.org/) in c++ implementing concepts of Computer Graphics for project Work of 3rd semester Bsc.CSIT, TU.
 
 ### Getting Start
 For linux
