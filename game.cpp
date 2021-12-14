@@ -1,3 +1,7 @@
+/*
+Project done by : Subash kc
+*/
+
 #include <iostream>
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
@@ -277,8 +281,7 @@ int main()
         for (int n = startPos; n < startPos + 300; n++)
         {
             Line &l = lines[n % N];
-            l.project(playerX * roadW , camH, startPos * segL - (n >= N ? N * segL : 0));
-            
+            l.project(playerX * roadW, camH, startPos * segL - (n >= N ? N * segL : 0));
 
             l.clip = maxy;
             if (l.Y >= maxy)
@@ -312,7 +315,7 @@ int main()
         window.draw(Rectcar);
 
         // for  collision with opponent car
-        if (lines[startPos+30].getSpriteBounds().intersects(Rectcar.getGlobalBounds()))
+        if (lines[startPos + 30].getSpriteBounds().intersects(Rectcar.getGlobalBounds()))
         {
             gameOver = true;
             sound.stop();
