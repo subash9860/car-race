@@ -11,6 +11,7 @@ int roadW = 2000;
 int segL = 200;    //segment length
 float camD = 0.84; //camera depth
 FloatRect sprite_bounds;
+bool gameOver = false;
 
 // for darawing quadilateral for road
 void drawQuad(RenderWindow &w, Color c, int x1, int y1, int w1, int x2, int y2, int w2)
@@ -22,22 +23,6 @@ void drawQuad(RenderWindow &w, Color c, int x1, int y1, int w1, int x2, int y2, 
     shape.setPoint(2, Vector2f(x2 + w2, y2));
     shape.setPoint(3, Vector2f(x1 + w1, y1));
     w.draw(shape);
-}
-
-void drawGameOverState(RenderWindow &w)
-{
-    Font f;
-    Text game_over;
-    FloatRect gameRect = game_over.getLocalBounds();
-
-    f.loadFromFile("Fonts/raider.ttf");
-    game_over.setFont(f);
-    game_over.setOrigin(gameRect.left + gameRect.width / 2.0f, gameRect.top + gameRect.height / 2.0f);
-    game_over.setPosition(width / 2 - 400, height / 2 - 200);
-    game_over.setFillColor(Color(155, 34, 48));
-    game_over.setString("GAME OVER\n");
-    game_over.setCharacterSize(100);
-    w.draw(game_over);
 }
 
 struct Line
@@ -129,7 +114,7 @@ int main()
     window.setFramerateLimit(60);
 
     SoundBuffer buffer;
-    if (!buffer.loadFromFile("sound.wav"))
+    if (!buffer.loadFromFile("sounds/sound.wav"))
         return -1; // error
 
     Sound sound;
@@ -137,8 +122,26 @@ int main()
     sound.setLoop(true);
 
     Music music;
-    if (!music.openFromFile("game_over.wav"))
+    if (!music.openFromFile("sounds/game_over.wav"))
         return -1;
+
+    // for game over
+    Font f, d;
+    Text game_over;
+    Text doneBY;
+    f.loadFromFile("Fonts/raider.ttf");
+    game_over.setFont(f);
+    game_over.setPosition(width / 2 - 250, height / 2 - 210);
+    game_over.setFillColor(Color(155, 34, 48));
+    game_over.setString("GAME OVER\n");
+    game_over.setCharacterSize(100);
+
+    d.loadFromFile("Fonts/OpenSans.ttf");
+    doneBY.setFont(d);
+    doneBY.setString("Project by: Subash Kc");
+    doneBY.setCharacterSize(80);
+    doneBY.setPosition(50, height / 2 + 200);
+    doneBY.setFillColor(Color(255, 255, 255));
 
     // drawing object in the side of road
     Texture t[50];
@@ -211,7 +214,7 @@ int main()
 
         if (i % 127 == 0)
         {
-            line.spriteX = 0;
+            //line.spriteX = 0;
             line.sprite.setTextureRect(IntRect(0, 0, 100, 50));
             line.opCar = object[8];
         }
@@ -238,24 +241,24 @@ int main()
         {
             if (e.type == Event::Closed)
                 window.close();
-            // if (Event::EventType::KeyPressed)
-            //     if (e.key.code == Keyboard::Up)
-            //         sound.play();
+            if (Event::EventType::KeyPressed)
+                if (e.key.code == Keyboard::Up)
+                    sound.play();
+            if (Event::EventType::KeyReleased && e.key.code == Keyboard::Up)
+                sound.pause();
         }
 
         int speed = 0;
 
-        if (Keyboard::isKeyPressed(Keyboard::Right))
-            playerX += 0.04;
-        if (Keyboard::isKeyPressed(Keyboard::Left))
-            playerX -= 0.04;
-        if (Keyboard::isKeyPressed(Keyboard::Up))
+        if (Keyboard::isKeyPressed(Keyboard::Right) && gameOver == false)
+            playerX += 0.03;
+        if (Keyboard::isKeyPressed(Keyboard::Left) && gameOver == false)
+            playerX -= 0.03;
+        if (Keyboard::isKeyPressed(Keyboard::Up) && gameOver == false)
         {
             speed = 100;
             sound.play();
         }
-        if (Event::EventType::KeyReleased && e.key.code == Keyboard::Up)
-            sound.pause();
 
         pos += speed;
         while (pos >= N * segL)
@@ -269,14 +272,13 @@ int main()
         int camH = lines[startPos].y + H;
 
         int maxy = height;
-        float x = 0, dx = 0;
 
         ///////draw road////////
         for (int n = startPos; n < startPos + 300; n++)
         {
             Line &l = lines[n % N];
-            l.project(playerX * roadW - x, camH, startPos * segL - (n >= N ? N * segL : 0));
-            x += dx;
+            l.project(playerX * roadW , camH, startPos * segL - (n >= N ? N * segL : 0));
+            
 
             l.clip = maxy;
             if (l.Y >= maxy)
@@ -310,36 +312,15 @@ int main()
         window.draw(Rectcar);
 
         // for  collision with opponent car
-        if (lines[startPos].getSpriteBounds().intersects(Rectcar.getGlobalBounds()))
+        if (lines[startPos+30].getSpriteBounds().intersects(Rectcar.getGlobalBounds()))
         {
-            sound.~Sound();
-            window.clear();
-            Texture over;
-            over.loadFromFile("images/over.png");
-
-            RectangleShape overgame(Vector2f(width, height));
-            overgame.setTexture(&over);
-
-            Font f, d;
-            Text game_over;
-            Text doneBY;
-            f.loadFromFile("Fonts/raider.ttf");
-            game_over.setFont(f);
-            game_over.setPosition(width / 2 - 250, height / 2 - 210);
-            game_over.setFillColor(Color(155, 34, 48));
-            game_over.setString("GAME OVER\n");
-            game_over.setCharacterSize(100);
-
-            d.loadFromFile("Fonts/OpenSans.ttf");
-            doneBY.setFont(d);
-            doneBY.setString("Project by: Subash Kc");
-            doneBY.setCharacterSize(80);
-            doneBY.setPosition(50, height / 2 + 200);
-            doneBY.setFillColor(Color(255, 255, 255));
-
+            gameOver = true;
             sound.stop();
+        }
+
+        if (gameOver)
+        {
             music.play();
-            window.draw(overgame);
             window.draw(game_over);
             window.draw(doneBY);
         }
